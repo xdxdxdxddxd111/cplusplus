@@ -129,18 +129,18 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
-class LogEntry
+public class LogEntry
 {
     public DateTime Time { get; set; }
     public string Level { get; set; }
     public string Message { get; set; }
 }
 
-class Logger
+public class Logger
 {
-    private string _logFilePath = "log.json";
-
-    public void Log(string level, string message)
+    private const string LogFilePath = "log.json";
+    
+    public void AddLogEntry(string level, string message)
     {
         var logEntry = new LogEntry
         {
@@ -148,31 +148,31 @@ class Logger
             Level = level,
             Message = message
         };
-
-        var logEntries = File.Exists(_logFilePath)
-            ? ReadExistingLogs()
-            : new List<LogEntry>();
-
-        logEntries.Add(logEntry);
-
-        SerializeAndSave(logEntries);
+        
+        WriteToFile(logEntry);
     }
-
-    private List<LogEntry> ReadExistingLogs()
+    
+    private void WriteToFile(LogEntry logEntry)
     {
-        string json = File.ReadAllText(_logFilePath);
-        return JsonSerializer.Deserialize<List<LogEntry>>(json) ?? new List<LogEntry>();
-    }
-
-    private void SerializeAndSave(List<LogEntry> logEntries)
-    {
+        List<LogEntry> existingLogs = new List<LogEntry>();
+        if (File.Exists(LogFilePath))
+        {
+            string jsonContent = File.ReadAllText(LogFilePath);
+            if (!string.IsNullOrEmpty(jsonContent))
+            {
+                existingLogs = JsonSerializer.Deserialize<List<LogEntry>>(jsonContent) ?? new List<LogEntry>();
+            }
+        }
+        
+        existingLogs.Add(logEntry);
+        
         var options = new JsonSerializerOptions
         {
             WriteIndented = true
         };
+        string json = JsonSerializer.Serialize(existingLogs, options);
         
-        string json = JsonSerializer.Serialize(logEntries, options);
-        File.WriteAllText(_logFilePath, json);
+        File.WriteAllText(LogFilePath, json);
     }
 }
 
@@ -181,11 +181,11 @@ class Program
     static void Main(string[] args)
     {
         var logger = new Logger();
-
-        logger.Log("INFO", "Приложение успешно запущено");
-        logger.Log("WARNING", "Обнаружено медленное соединение с базой данных");
-        logger.Log("ERROR", "Не удалось выполнить запрос к API: ошибка аутентификации");
-
+        
+        logger.AddLogEntry("INFO", "Приложение успешно запущено");
+        logger.AddLogEntry("WARNING", "Обнаружено низкое дисковое пространство");
+        logger.AddLogEntry("ERROR", "Не удалось подключиться к базе данных");
+        
         Console.WriteLine("Логи успешно записаны в файл log.json");
     }
 }
