@@ -128,64 +128,48 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Text.Encodings.Web;
+using System.Text.Unicode;
 
-public class LogEntry
+namespace LoggingSystem
 {
-    public DateTime Time { get; set; }
-    public string Level { get; set; }
-    public string Message { get; set; }
-}
-
-public class Logger
-{
-    private const string LogFilePath = "log.json";
-    
-    public void AddLogEntry(string level, string message)
+    public class LogEntry
     {
-        var logEntry = new LogEntry
-        {
-            Time = DateTime.Now,
-            Level = level,
-            Message = message
-        };
-        
-        WriteToFile(logEntry);
+        public DateTime Time { get; set; }
+        public string Level { get; set; }
+        public string Message { get; set; }
     }
-    
-    private void WriteToFile(LogEntry logEntry)
+
+    class Program
     {
-        List<LogEntry> existingLogs = new List<LogEntry>();
-        if (File.Exists(LogFilePath))
+        static void Main(string[] args)
         {
-            string jsonContent = File.ReadAllText(LogFilePath);
-            if (!string.IsNullOrEmpty(jsonContent))
+            string filePath = "log.json";
+
+            var logEntries = new List<LogEntry>
             {
-                existingLogs = JsonSerializer.Deserialize<List<LogEntry>>(jsonContent) ?? new List<LogEntry>();
-            }
+                new LogEntry { Time = DateTime.Now, Level = "INFO", Message = "Приложение запущено." },
+                new LogEntry { Time = DateTime.Now.AddSeconds(2), Level = "WARNING", Message = "Низкий заряд батареи." },
+                new LogEntry { Time = DateTime.Now.AddSeconds(5), Level = "ERROR", Message = "Не удалось подключиться к базе данных." }
+            };
+
+            WriteLogsToJson(logEntries, filePath);
+
+            Console.WriteLine($"Логи успешно записаны в {Path.GetFullPath(filePath)}");
         }
-        
-        existingLogs.Add(logEntry);
-        
-        var options = new JsonSerializerOptions
+
+        static void WriteLogsToJson(List<LogEntry> logs, string filePath)
         {
-            WriteIndented = true
-        };
-        string json = JsonSerializer.Serialize(existingLogs, options);
-        
-        File.WriteAllText(LogFilePath, json);
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+            };
+
+            string jsonString = JsonSerializer.Serialize(logs, options);
+
+            File.WriteAllText(filePath, jsonString);
+        }
     }
 }
 
-class Program
-{
-    static void Main(string[] args)
-    {
-        var logger = new Logger();
-        
-        logger.AddLogEntry("INFO", "Приложение успешно запущено");
-        logger.AddLogEntry("WARNING", "Обнаружено низкое дисковое пространство");
-        logger.AddLogEntry("ERROR", "Не удалось подключиться к базе данных");
-        
-        Console.WriteLine("Логи успешно записаны в файл log.json");
-    }
-}
